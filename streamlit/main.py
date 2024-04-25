@@ -19,7 +19,7 @@ model = genai.GenerativeModel(
 st.set_page_config(page_title="e-report", page_icon="🤖")
 
 def main():
-    logo = "bcp_logo.png"
+    logo = "streamlit/bcp_logo.png"
     st.sidebar.image(logo)
     #st.sidebar.title("Navigation")
     page = st.sidebar.selectbox("Choose a page", ["Summary", "Interactive Model"])
