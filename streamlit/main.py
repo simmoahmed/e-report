@@ -4,6 +4,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import markdown
 import google.generativeai as genai
+from dotenv import load_dotenv
+# Set up and configure the model globally to avoid reconfiguration
+
+load_dotenv()
 
 genai.configure(api_key="AIzaSyC6EpDYb85c7IqxdLkIu5xGn8CrKadc08A")
 model = genai.GenerativeModel(
@@ -19,7 +23,7 @@ model = genai.GenerativeModel(
 st.set_page_config(page_title="e-report", page_icon="🤖")
 
 def main():
-    logo = "streamlit/bcp_logo.png"
+    logo = "bcp_logo.png"
     st.sidebar.image(logo)
     #st.sidebar.title("Navigation")
     page = st.sidebar.selectbox("Choose a page", ["Summary", "Interactive Model"])
@@ -142,34 +146,41 @@ def interactive_model_page():
     with st.sidebar:
         if st.button("Clear chat window", use_container_width=True):
             st.session_state.history = []
-            st.experimental_rerun()
+            st.rerun()
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    chat = model.start_chat(history=st.session_state.history)
     
-    for message in st.session_state.history:
-        role = "assistant" if message.role == 'model' else message.role
-        with st.chat_message(role):
-            st.markdown(message.part[0].text)  
+                    
+    if "history_user" not in st.session_state:
+        st.session_state.history_user = []
+
+    if "history_answer" not in st.session_state:
+        st.session_state.history_answer = []
+
+    #chat = model.start_chat(history=st.session_state.history)
+    
+    # for message in st.session_state.history:
+    #     role = "assistant" if message.role == 'model' else message.role
+    #     with st.chat_message(role):
+    #         st.markdown(message.part[0].text)  
     
     # Handle file upload
     uploaded_file = st.file_uploader("Upload a log file", type=["log", "txt"])
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue().decode("utf-8")
         st.session_state.file_content = file_content
-        st.session_state.history = []
+        #st.session_state.history = []
         st.success("File uploaded successfully! You can now ask questions about it.")
 
     # Check if file content is available for interaction
     if 'file_content' in st.session_state:  
-
         if prompt := st.chat_input(""):
+            
             prompt = prompt.replace('\n', ' \n')
+            display_conversation()
 
             with st.chat_message("user"):
                 st.markdown(prompt)
+                st.session_state.history_user.append(prompt)
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
@@ -177,23 +188,50 @@ def interactive_model_page():
                 try:
                     full_resp = query_model(prompt, st.session_state.file_content)
                     message_placeholder.markdown(full_resp)
+                    st.session_state.history_answer.append(full_resp)
+
                 except genai.types.generation_types.BlockedPromptException as e:
                     st.exception(e)
                 except Exception as e:
                     st.exception(e)
-            st.session_state.history = chat.history
-
-
-def display_conversation():
-    if 'history' in st.session_state:
-        for entry in st.session_state.history:
-            st.markdown(entry)
-
+            with st.sidebar:
+                # Download button for conversation history
+                history_text = generate_conversation_history()
+                st.download_button(label="Download History",
+                        data=history_text,
+                        file_name="conversation_history.md",
+                        mime="text/markdown")
+                    
+        
+    
 def query_model(query, context):
     instructions = f"Compte tenu du contexte du journal, répondez à la question: {query}"
     template = f"Instruction:\n{instructions}\nContext:\n{context}\nResponse:\n"
     response = model.generate_content(template)
     return response.text
+
+
+def display_conversation():
+    if 'history_user' in st.session_state and 'history_answer' in st.session_state:
+        n = min(len(st.session_state.history_user), len(st.session_state.history_answer))
+        for i in range(n):
+            with st.container():
+                with st.chat_message("user"):
+                    st.markdown(st.session_state.history_user[i])
+                with st.chat_message("assistant"):
+                    st.markdown(st.session_state.history_answer[i])
+
+def generate_conversation_history():
+    if 'history_user' in st.session_state and 'history_answer' in st.session_state:
+        history_content = []
+        n = min(len(st.session_state.history_user), len(st.session_state.history_answer))
+        for i in range(n):
+            user_message = f"User: {st.session_state.history_user[i]}"
+            assistant_message = f"Assistant: {st.session_state.history_answer[i]}"
+            history_content.append(user_message)
+            history_content.append(assistant_message)
+        return "\n".join(history_content)
+    return "No conversation history available."
 
 if __name__ == "__main__":
     main()
