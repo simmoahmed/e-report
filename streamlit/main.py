@@ -4,7 +4,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import markdown
 import google.generativeai as genai
-from dotenv import load_dotenv
 # Set up and configure the model globally to avoid reconfiguration
 
 load_dotenv()
