@@ -6,8 +6,6 @@ import markdown
 import google.generativeai as genai
 # Set up and configure the model globally to avoid reconfiguration
 
-load_dotenv()
-
 genai.configure(api_key="AIzaSyC6EpDYb85c7IqxdLkIu5xGn8CrKadc08A")
 model = genai.GenerativeModel(
     model_name="gemini-1.5-pro-latest",
